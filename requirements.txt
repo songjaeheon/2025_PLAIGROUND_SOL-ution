@@ -1,0 +1,8 @@
+google-generativeai
+streamlit>=1.34.0
+gspread
+requests
+langchain-google-genai
+langchain-community
+pypdf
+python-dotenv
