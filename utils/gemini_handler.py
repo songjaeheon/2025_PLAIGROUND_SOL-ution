@@ -8,10 +8,10 @@ class GeminiHandler:
     def __init__(self, api_key):
         self.api_key = api_key
         genai.configure(api_key=self.api_key)
-        # Using gemini-1.5-flash as requested for speed/efficiency, or pro.
-        # Spec mentions "Gemini Pro" in text but "gemini-1.5-flash" in tech stack.
-        # I'll default to 1.5-flash for better JSON handling and speed.
-        self.model = genai.GenerativeModel('gemini-1.5-flash', generation_config={"response_mime_type": "application/json", "temperature": 0.3})
+        # Using gemini-flash-latest as requested for speed/efficiency, or pro.
+        # Spec mentions "Gemini Pro" in text but "gemini-flash-latest" in tech stack.
+        # I'll default to gemini-flash-latest for better JSON handling and speed.
+        self.model = genai.GenerativeModel('gemini-flash-latest', generation_config={"response_mime_type": "application/json", "temperature": 0.3})
 
     def extract_text_from_pdf(self, uploaded_file):
         """
