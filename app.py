@@ -12,7 +12,7 @@ from utils.logger import logger
 load_dotenv()
 
 # Initialize Logger (Logging start)
-logger.info("Application started / rerun detected")
+# logger.info("Application started / rerun detected")
 
 # Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
