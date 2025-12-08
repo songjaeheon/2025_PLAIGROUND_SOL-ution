@@ -3,6 +3,7 @@ import os
 import json
 from dotenv import load_dotenv
 
+from utils.logger import logger # Initialize logger
 from utils.gemini_handler import GeminiHandler
 from utils.discord_sender import send_sos_message
 from utils.sheet_handler import log_quiz_result

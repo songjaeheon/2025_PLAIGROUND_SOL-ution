@@ -1,13 +1,16 @@
 import requests
 import json
 import streamlit as st
+from .logger import logger
 
 def send_sos_message(webhook_url, user_name, question_title, user_answer, correct_answer, user_question):
     """
     Sends a formatted Embed message to Discord via Webhook.
     """
+    logger.info("Attempting to send Discord webhook...")
     if not webhook_url:
         st.error("Discord Webhook URL이 설정되지 않았습니다.")
+        logger.error("Discord Webhook URL is missing.")
         return False
 
     embed = {
@@ -47,7 +50,9 @@ def send_sos_message(webhook_url, user_name, question_title, user_answer, correc
     try:
         response = requests.post(webhook_url, json=payload)
         response.raise_for_status()
+        logger.info("Discord webhook sent successfully. Status Code: %d", response.status_code)
         return True
     except requests.exceptions.RequestException as e:
         st.error(f"Discord 전송 실패: {e}")
+        logger.error("Discord webhook failed", exc_info=True)
         return False

@@ -3,6 +3,7 @@ import json
 import tempfile
 import google.generativeai as genai
 from langchain_community.document_loaders import PyPDFLoader
+from .logger import logger
 
 class GeminiHandler:
     def __init__(self, api_key):
@@ -17,6 +18,7 @@ class GeminiHandler:
         """
         Saves the uploaded Streamlit file temporarily and extracts text using PyPDFLoader.
         """
+        logger.info("Starting PDF text extraction...")
         try:
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
                 tmp_file.write(uploaded_file.getvalue())
@@ -27,15 +29,17 @@ class GeminiHandler:
             text = "".join([p.page_content for p in pages])
 
             os.remove(tmp_path)
+            logger.info("PDF extraction successful. Length: %d characters", len(text))
             return text
         except Exception as e:
-            print(f"Error extracting PDF: {e}")
+            logger.error("Error extracting PDF", exc_info=True)
             return None
 
     def generate_quiz(self, text):
         """
         Sends the text to Gemini and requests a quiz in JSON format.
         """
+        logger.info("Starting quiz generation...")
         prompt = f"""
         당신은 기업 신입 사원 교육 담당자입니다.
         다음 제공되는 문서 내용을 바탕으로 신입 사원 교육용 객관식 퀴즈 5개를 만들어주세요.
@@ -59,7 +63,8 @@ class GeminiHandler:
             response = self.model.generate_content(prompt)
             # Since we set response_mime_type to json, we can just parse the text.
             quiz_data = json.loads(response.text)
+            logger.info("Quiz generation successful.")
             return quiz_data
         except Exception as e:
-            print(f"Error generating quiz: {e}")
+            logger.error("Error generating quiz", exc_info=True)
             return None
