@@ -6,9 +6,13 @@ from dotenv import load_dotenv
 from utils.gemini_handler import GeminiHandler
 from utils.discord_sender import send_sos_message
 from utils.sheet_handler import log_quiz_result
+from utils.logger import logger
 
 # Load environment variables
 load_dotenv()
+
+# Initialize Logger (Logging start)
+logger.info("Application started / rerun detected")
 
 # Configuration
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
@@ -50,29 +54,41 @@ user_name = st.sidebar.text_input("사번 (이름)", placeholder="예: 12345 홍
 uploaded_file = st.sidebar.file_uploader("PDF 문서 업로드", type="pdf")
 
 if st.sidebar.button("퀴즈 생성 시작"):
+    logger.info("Quiz generation button clicked")
     if not user_name:
         st.sidebar.error("사번(이름)을 입력해주세요.")
+        logger.warning("User attempted to generate quiz without providing name/ID")
     elif not uploaded_file:
         st.sidebar.error("PDF 파일을 업로드해주세요.")
+        logger.warning("User attempted to generate quiz without uploading file")
     elif not GOOGLE_API_KEY:
         st.sidebar.error("Google API Key가 설정되지 않았습니다.")
+        logger.error("GOOGLE_API_KEY is missing from environment variables")
     else:
+        logger.info(f"Processing quiz generation for user: {user_name}, file: {uploaded_file.name}")
         with st.spinner("문서를 분석하고 퀴즈를 생성중입니다..."):
             reset_quiz()
             st.session_state.uploaded_file_name = uploaded_file.name
 
-            gemini = GeminiHandler(GOOGLE_API_KEY)
-            text = gemini.extract_text_from_pdf(uploaded_file)
+            try:
+                gemini = GeminiHandler(GOOGLE_API_KEY)
+                text = gemini.extract_text_from_pdf(uploaded_file)
 
-            if text:
-                quiz_json = gemini.generate_quiz(text)
-                if quiz_json:
-                    st.session_state.quiz_data = quiz_json
-                    st.success("퀴즈가 생성되었습니다!")
+                if text:
+                    quiz_json = gemini.generate_quiz(text)
+                    if quiz_json:
+                        st.session_state.quiz_data = quiz_json
+                        st.success("퀴즈가 생성되었습니다!")
+                        logger.info("Quiz successfully generated and stored in session state")
+                    else:
+                        st.error("퀴즈 생성에 실패했습니다. 다시 시도해주세요.")
+                        logger.error("Quiz generation returned None")
                 else:
-                    st.error("퀴즈 생성에 실패했습니다. 다시 시도해주세요.")
-            else:
-                st.error("PDF 텍스트 추출에 실패했습니다.")
+                    st.error("PDF 텍스트 추출에 실패했습니다.")
+                    logger.error("PDF text extraction returned None")
+            except Exception as e:
+                st.error(f"오류가 발생했습니다: {e}")
+                logger.error(f"Unexpected error during quiz generation process: {e}", exc_info=True)
 
 # Helper for SOS Modal
 @st.dialog("선배에게 질문하기 (SOS)")
@@ -86,8 +102,10 @@ def show_sos_dialog(question_data, user_selected_option):
     user_question = st.text_area("질문 내용을 작성해주세요:", height=150)
 
     if st.button("질문 전송"):
+        logger.info("SOS 'Send Question' button clicked")
         if not user_question:
             st.error("질문 내용을 입력해주세요.")
+            logger.warning("User attempted to send SOS without question content")
         else:
             with st.spinner("전송 중..."):
                 # Send to Discord

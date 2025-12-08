@@ -33,3 +33,20 @@ SPREADSHEET_ID=your_spreadsheet_id
 ```bash
 streamlit run app.py
 ```
+
+## 🛠️ 트러블슈팅 및 로그 확인
+
+운영 중 발생하는 에러와 시스템 상태는 로그 파일에서 확인할 수 있습니다.
+
+1. **로그 파일 위치**: 프로젝트 루트 디렉토리의 `./app.log` 파일에 저장됩니다.
+2. **실시간 로그 확인**: 터미널에서 다음 명령어로 실시간 로그를 모니터링할 수 있습니다.
+   ```bash
+   tail -f app.log
+   ```
+3. **주요 로그 메시지 예시**:
+   - **정상 작동**:
+     - `[INFO] [gemini_handler.py:generate_quiz] Quiz successfully generated...`
+     - `[INFO] [discord_sender.py:send_sos_message] SOS message sent successfully.`
+   - **에러 발생**:
+     - `[ERROR] [gemini_handler.py:extract_text_from_pdf] Error extracting PDF` (PDF 추출 실패)
+     - `[ERROR] [sheet_handler.py:log_quiz_result] Error logging to sheet` (구글 시트 연동 실패)
