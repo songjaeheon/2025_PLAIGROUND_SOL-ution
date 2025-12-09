@@ -210,7 +210,7 @@ def show_sos_dialog(question_data, user_selected_option, user_name):
 def generate_quiz_logic(user_name, uploaded_file):
     logger.info("Quiz generation triggered")
     if not user_name:
-        st.error("사번(이름)을 입력해주세요.")
+        st.error("행번을 입력해주세요.")
         logger.warning("User attempted to generate quiz without providing name/ID")
         return False
     elif not uploaded_file:
@@ -324,7 +324,7 @@ def ranking_page():
         # Rename columns for display
         df_display = df_ranked.rename(columns={
             'Rank': '순위',
-            'Employee_ID': '사번 (이름)',
+            'Employee_ID': '행번',
             'Score': '점수',
             'Timestamp': '날짜'
         })
@@ -472,7 +472,7 @@ with st.sidebar:
     st.title("설정 및 파일 업로드")
 
     # Inputs
-    user_name_input = st.text_input("사번 (이름)", placeholder="예: 12345 홍길동")
+    user_name_input = st.text_input("행번", placeholder="예: 12345 홍길동")
     uploaded_file_input = st.file_uploader("PDF 문서 업로드", type="pdf")
 
     # Optional: Sidebar Generate Button (for quick access or if user prefers)
