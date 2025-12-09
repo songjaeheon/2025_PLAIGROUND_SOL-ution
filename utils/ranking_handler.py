@@ -29,7 +29,7 @@ def get_all_scores(credentials_path, spreadsheet_id):
         df = pd.DataFrame(data)
 
         # Validate columns
-        required_cols = {'Employee_ID', 'Doc_Name', 'Score', 'Timestamp'}
+        required_cols = {'Timestamp','Employee_ID', 'Doc_Name', 'Score'}
         if not required_cols.issubset(df.columns):
             logger.error(f"Missing columns in log_scores. Expected {required_cols}, got {df.columns}")
             return pd.DataFrame()
