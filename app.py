@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from utils.gemini_handler import GeminiHandler
 from utils.discord_sender import send_sos_message
 from utils.sheet_handler import save_score, save_wrong_answer, save_mentoring_log
+from utils.ranking_handler import get_all_scores, get_unique_doc_names, calculate_ranking
 from utils.logger import logger
 
 # Load environment variables
@@ -124,6 +125,8 @@ if "score" not in st.session_state:
     st.session_state.score = 0
 if "answer_checked" not in st.session_state:
     st.session_state.answer_checked = False
+if "ranking_doc_selected" not in st.session_state:
+    st.session_state.ranking_doc_selected = None
 
 # --- Helper Functions ---
 
@@ -135,21 +138,27 @@ def reset_quiz():
     st.session_state.score = 0
     st.session_state.answer_checked = False
 
-def render_logo(width="300px", fixed_transparent=False):
+def render_logo(width="300px", fixed_transparent=False, clickable=False):
+    logo_html = ""
     if fixed_transparent:
-        html = f"""
+        logo_html = f"""
         <div class="logo-container">
             <img src="data:image/png;base64,{img_dark}" class="logo-img" style="width: {width};">
         </div>
         """
     else:
-        html = f"""
+        logo_html = f"""
         <div class="logo-container">
             <img src="data:image/png;base64,{img_light}" class="logo-img logo-light" style="width: {width};">
             <img src="data:image/png;base64,{img_dark}" class="logo-img logo-dark" style="width: {width};">
         </div>
         """
-    st.markdown(html, unsafe_allow_html=True)
+
+    if clickable:
+        # Wrap in anchor tag to reload page (resetting state to Home)
+        logo_html = f'<a href="/" target="_self" style="text-decoration: none;">{logo_html}</a>'
+
+    st.markdown(logo_html, unsafe_allow_html=True)
 
 @st.dialog("선배에게 질문하기 (SOS)")
 def show_sos_dialog(question_data, user_selected_option, user_name):
@@ -265,6 +274,71 @@ def home_page(user_name, uploaded_file):
                 st.session_state.page = "quiz"
                 st.rerun()
 
+        # Add Leaderboard Button
+        if st.button("🏆 명예의 전당", use_container_width=True):
+            st.session_state.page = "ranking"
+            st.session_state.ranking_doc_selected = None # Reset selection
+            st.rerun()
+
+def ranking_page():
+    st.title("🏆 명예의 전당 (Leaderboard)")
+
+    col1, col2 = st.columns([4, 1])
+    with col2:
+         if st.button("🏠 홈으로", use_container_width=True):
+            st.session_state.page = "home"
+            st.rerun()
+
+    with st.spinner("순위 데이터를 불러오는 중입니다..."):
+        df_all = get_all_scores(GOOGLE_SHEET_CREDENTIALS, SPREADSHEET_ID)
+
+    if df_all.empty:
+        st.info("아직 등록된 점수 데이터가 없습니다.")
+        return
+
+    # Document Selection
+    doc_options = get_unique_doc_names(df_all)
+
+    # Determine default index
+    default_index = 0
+    if st.session_state.ranking_doc_selected in doc_options:
+        default_index = doc_options.index(st.session_state.ranking_doc_selected)
+
+    selected_doc = st.selectbox("순위를 확인할 문서를 선택하세요:", doc_options, index=default_index)
+
+    if selected_doc:
+        # Filter and Rank
+        df_filtered = df_all[df_all['Doc_Name'] == selected_doc].copy()
+        df_ranked = calculate_ranking(df_filtered)
+
+        # Formatting for Display
+        # Add Emojis to Rank
+        def format_rank(rank):
+            if rank == 1: return "🥇 1"
+            elif rank == 2: return "🥈 2"
+            elif rank == 3: return "🥉 3"
+            else: return str(rank)
+
+        df_ranked['Rank'] = df_ranked['Rank'].apply(format_rank)
+
+        # Rename columns for display
+        df_display = df_ranked.rename(columns={
+            'Rank': '순위',
+            'Employee_ID': '사번 (이름)',
+            'Score': '점수',
+            'Timestamp': '날짜'
+        })
+
+        st.dataframe(
+            df_display,
+            column_config={
+                "순위": st.column_config.TextColumn("순위", width="medium"),
+                "점수": st.column_config.NumberColumn("점수", format="%d점"),
+            },
+            use_container_width=True,
+            hide_index=True
+        )
+
 def quiz_page(user_name):
     # Quiz UI
     # Header: File Name and User Name
@@ -345,18 +419,41 @@ def quiz_page(user_name):
         else:
             # Quiz Completed
             st.success(f"모든 문제를 풀었습니다! 최종 점수: {st.session_state.score}점")
-            if st.button("결과 저장 및 홈으로"):
-                 save_score(
-                    GOOGLE_SHEET_CREDENTIALS,
-                    SPREADSHEET_ID,
-                    user_name,
-                    st.session_state.uploaded_file_name,
-                    st.session_state.score
-                )
-                 st.success("기록되었습니다. 수고하셨습니다!")
-                 st.session_state.page = "home"
-                 reset_quiz()
-                 st.rerun()
+
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("결과 저장 및 홈으로"):
+                     save_score(
+                        GOOGLE_SHEET_CREDENTIALS,
+                        SPREADSHEET_ID,
+                        user_name,
+                        st.session_state.uploaded_file_name,
+                        st.session_state.score
+                    )
+                     st.success("기록되었습니다. 수고하셨습니다!")
+                     st.session_state.page = "home"
+                     reset_quiz()
+                     st.rerun()
+            with col2:
+                 if st.button("내 순위 확인하기"):
+                     # Save score first if not saved?
+                     # Actually, to show ranking, the score MUST be saved first.
+                     # But the current flow has "Save and Home" as one button.
+                     # If they click "Check Ranking", we should implicitly save the score so it appears in the leaderboard.
+
+                     save_score(
+                        GOOGLE_SHEET_CREDENTIALS,
+                        SPREADSHEET_ID,
+                        user_name,
+                        st.session_state.uploaded_file_name,
+                        st.session_state.score
+                    )
+                     st.success("점수가 저장되었습니다.")
+                     st.session_state.page = "ranking"
+                     st.session_state.ranking_doc_selected = st.session_state.uploaded_file_name
+                     reset_quiz() # Reset quiz state since we are leaving
+                     st.rerun()
+
     else:
         st.info("문제가 발생했습니다. 홈으로 돌아가주세요.")
         if st.button("홈으로 이동"):
@@ -367,9 +464,9 @@ def quiz_page(user_name):
 
 # Sidebar is common (Inputs)
 with st.sidebar:
-    # Render logo in sidebar ONLY if we are in quiz mode
-    if st.session_state.page == "quiz":
-        render_logo(width="200px", fixed_transparent=True)
+    # Render logo in sidebar ONLY if we are in quiz mode OR ranking mode
+    if st.session_state.page in ["quiz", "ranking"]:
+        render_logo(width="200px", fixed_transparent=True, clickable=True)
         st.divider()
 
     st.title("설정 및 파일 업로드")
@@ -394,3 +491,5 @@ if st.session_state.page == "home":
     home_page(user_name_input, uploaded_file_input)
 elif st.session_state.page == "quiz":
     quiz_page(user_name_input)
+elif st.session_state.page == "ranking":
+    ranking_page()
