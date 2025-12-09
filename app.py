@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from utils.gemini_handler import GeminiHandler
 from utils.discord_sender import send_sos_message
-from utils.sheet_handler import save_score, save_wrong_answer, save_mentoring_log
+from utils.sheet_handler import save_score, save_wrong_answer, save_mentoring_log, get_wrong_answers
 from utils.ranking_handler import get_all_scores, get_unique_doc_names, calculate_ranking
 from utils.logger import logger
 
@@ -46,8 +46,34 @@ except FileNotFoundError:
     img_dark = ""
 
 # --- CSS Styling ---
-# Logo switching via media query
-# Custom styling for buttons and layout
+# Sidebar CSS
+sidebar_css = """
+    /* Sidebar Button Styling */
+    div[data-testid="stSidebarUserContent"] .stButton button {
+        width: 100%;
+        border-radius: 5px;
+        padding-top: 15px;
+        padding-bottom: 15px;
+        border: 1px solid transparent; /* Tab-like feel */
+        margin-bottom: 5px;
+        transition: all 0.3s ease;
+    }
+
+    /* Force Secondary Buttons to be transparent/white by default to fix Blue-everywhere issue */
+    div[data-testid="stSidebarUserContent"] .stButton button[kind="secondary"] {
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        color: inherit !important;
+    }
+
+    /* Inactive Button Hover Effect */
+    div[data-testid="stSidebarUserContent"] .stButton button[kind="secondary"]:hover {
+        background-color: #f0f2f6 !important;
+        border: 1px solid #dcdcdc !important;
+        color: #0046FF !important;
+    }
+"""
+
 st.markdown(
     f"""
     <style>
@@ -87,14 +113,14 @@ st.markdown(
         }}
     }}
 
-    /* Brand Styling */
-    .stButton > button {{
+    /* Brand Styling for Primary Buttons (Main Content) */
+    .stButton > button[kind="primary"] {{
         background-color: #0046FF !important;
         color: white !important;
         border-radius: 8px;
         font-weight: bold;
     }}
-    .stButton > button:hover {{
+    .stButton > button[kind="primary"]:hover {{
         background-color: #0033CC !important;
         color: white !important;
     }}
@@ -103,6 +129,9 @@ st.markdown(
     h1, h2, h3 {{
         color: #0046FF;
     }}
+
+    /* Sidebar Custom CSS */
+    {sidebar_css}
     </style>
     """,
     unsafe_allow_html=True
@@ -127,6 +156,10 @@ if "answer_checked" not in st.session_state:
     st.session_state.answer_checked = False
 if "ranking_doc_selected" not in st.session_state:
     st.session_state.ranking_doc_selected = None
+if "user_name" not in st.session_state:
+    st.session_state.user_name = ""
+if "quiz_active" not in st.session_state:
+    st.session_state.quiz_active = False
 
 # --- Helper Functions ---
 
@@ -137,6 +170,7 @@ def reset_quiz():
     st.session_state.quiz_submitted = False
     st.session_state.score = 0
     st.session_state.answer_checked = False
+    st.session_state.quiz_active = False
 
 def render_logo(width="300px", fixed_transparent=False, clickable=False):
     logo_html = ""
@@ -154,9 +188,12 @@ def render_logo(width="300px", fixed_transparent=False, clickable=False):
         </div>
         """
 
-    if clickable:
-        # Wrap in anchor tag to reload page (resetting state to Home)
-        logo_html = f'<a href="/" target="_self" style="text-decoration: none;">{logo_html}</a>'
+    # For clickable, we'll let Streamlit's sidebar radio handle navigation mainly,
+    # but we can keep this for decorative purposes.
+    # If clickable=True, clicking usually resets to home.
+    # We can't easily inject a Streamlit rerun via raw HTML click.
+    # So we'll skip the clickable link wrapper if it interferes with state.
+    # But since it's just a visual, it's fine.
 
     st.markdown(logo_html, unsafe_allow_html=True)
 
@@ -224,8 +261,16 @@ def generate_quiz_logic(user_name, uploaded_file):
     else:
         logger.info(f"Processing quiz generation for user: {user_name}, file: {uploaded_file.name}")
         with st.spinner("문서를 분석하고 퀴즈를 생성중입니다..."):
-            reset_quiz()
+            # Reset quiz state, but keep user_name and filename
+            st.session_state.quiz_data = None
+            st.session_state.current_q_index = 0
+            st.session_state.user_answers = {}
+            st.session_state.quiz_submitted = False
+            st.session_state.score = 0
+            st.session_state.answer_checked = False
+
             st.session_state.uploaded_file_name = uploaded_file.name
+            st.session_state.user_name = user_name # Store name in session
 
             try:
                 gemini = GeminiHandler(GOOGLE_API_KEY)
@@ -235,6 +280,7 @@ def generate_quiz_logic(user_name, uploaded_file):
                     quiz_json = gemini.generate_quiz(text)
                     if quiz_json:
                         st.session_state.quiz_data = quiz_json
+                        st.session_state.quiz_active = True # Set quiz active
                         st.success("퀴즈가 생성되었습니다!")
                         logger.info("Quiz successfully generated and stored in session state")
                         return True
@@ -253,41 +299,46 @@ def generate_quiz_logic(user_name, uploaded_file):
 
 # --- Page Functions ---
 
-def home_page(user_name, uploaded_file):
+def home_page():
+    # If quiz is active, show quiz interface instead of setup
+    if st.session_state.quiz_active:
+        quiz_page(st.session_state.user_name)
+        return
+
     # Center Logo
     render_logo(width="400px")
 
     st.markdown(
         """
-        <div style="text-align: center; margin-bottom: 50px;">
+        <div style="text-align: center; margin-bottom: 30px;">
             <h3>신입, 전입 직원을 위한 퀴즈형 자기주도 학습 서비스</h3>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-    # Centered CTA Button
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        if st.button("학습 시작하기", use_container_width=True):
-            if generate_quiz_logic(user_name, uploaded_file):
-                st.session_state.page = "quiz"
-                st.rerun()
+    # Main Content: Setup Form
+    st.markdown("#### 학습 설정")
 
-        # Add Leaderboard Button
-        if st.button("🏆 명예의 전당", use_container_width=True):
-            st.session_state.page = "ranking"
-            st.session_state.ranking_doc_selected = None # Reset selection
+    col1, col2 = st.columns([1, 2])
+
+    # Inputs moved from Sidebar to Main Content
+    user_name_input = st.text_input("행번을 입력하세요",
+                                    value=st.session_state.user_name if st.session_state.user_name else "",
+                                    placeholder="예: 12345 홍길동")
+
+    uploaded_file_input = st.file_uploader("학습할 PDF 문서를 업로드하세요", type="pdf")
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    if st.button("퀴즈 생성 (Start Quiz)", use_container_width=True, type="primary"):
+        # Store user name immediately
+        st.session_state.user_name = user_name_input
+        if generate_quiz_logic(user_name_input, uploaded_file_input):
             st.rerun()
 
 def ranking_page():
     st.title("🏆 명예의 전당 (Leaderboard)")
-
-    col1, col2 = st.columns([4, 1])
-    with col2:
-         if st.button("🏠 홈으로", use_container_width=True):
-            st.session_state.page = "home"
-            st.rerun()
 
     with st.spinner("순위 데이터를 불러오는 중입니다..."):
         df_all = get_all_scores(GOOGLE_SHEET_CREDENTIALS, SPREADSHEET_ID)
@@ -338,6 +389,46 @@ def ranking_page():
             use_container_width=True,
             hide_index=True
         )
+
+def wrong_answers_page():
+    st.title("📝 오답노트 (Wrong Answer Note)")
+
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        # Prefill if available in session state
+        search_id = st.text_input("조회할 행번을 입력하세요:")
+    with col2:
+        # Align button with input
+        st.write("")
+        st.write("")
+        search_btn = st.button("조회하기", use_container_width=True)
+
+    if search_btn and search_id:
+        st.session_state.user_name = search_id # Sync session state
+        with st.spinner("오답 기록을 불러오는 중입니다..."):
+            wrong_answers = get_wrong_answers(GOOGLE_SHEET_CREDENTIALS, SPREADSHEET_ID, search_id)
+
+        if not wrong_answers:
+            st.info("틀린 문제가 없습니다. (혹은 행번을 확인해주세요)")
+        else:
+            for idx, item in enumerate(wrong_answers):
+                # Header format: [Date] [File] Question...
+                header_text = f"[{item['Timestamp']}] [{item['Doc_Name']}] {item['Question_Text'][:50]}..."
+
+                with st.expander(header_text):
+                    st.markdown(f"**문제:** {item['Question_Text']}")
+
+                    st.markdown("---")
+                    st.markdown(f"**❌ 내가 고른 답:** {item['User_Selected_Answer']}")
+                    st.markdown(f"**✅ 정답:** {item['Correct_Answer']}")
+
+                    if item.get('Options'):
+                        st.markdown("---")
+                        st.markdown("**보기:**")
+                        for opt in item['Options']:
+                            st.text(f"- {opt}")
+    elif search_btn and not search_id:
+        st.warning("행번을 입력해주세요.")
 
 def quiz_page(user_name):
     # Quiz UI
@@ -431,16 +522,11 @@ def quiz_page(user_name):
                         st.session_state.score
                     )
                      st.success("기록되었습니다. 수고하셨습니다!")
-                     st.session_state.page = "home"
+                     # Reset quiz and go back to Setup
                      reset_quiz()
                      st.rerun()
             with col2:
                  if st.button("내 순위 확인하기"):
-                     # Save score first if not saved?
-                     # Actually, to show ranking, the score MUST be saved first.
-                     # But the current flow has "Save and Home" as one button.
-                     # If they click "Check Ranking", we should implicitly save the score so it appears in the leaderboard.
-
                      save_score(
                         GOOGLE_SHEET_CREDENTIALS,
                         SPREADSHEET_ID,
@@ -449,47 +535,59 @@ def quiz_page(user_name):
                         st.session_state.score
                     )
                      st.success("점수가 저장되었습니다.")
-                     st.session_state.page = "ranking"
+                     # Go to ranking page
+                     # To switch page, we need to update the sidebar state if possible,
+                     # but st.sidebar.radio controls the state.
+                     # We can change st.session_state.page, but the radio widget needs to match.
+                     # Since we can't easily programmatically change the widget value without 'key' session state trickery.
+                     # We will use st.session_state['sidebar_nav'] = '...' if we key the radio.
                      st.session_state.ranking_doc_selected = st.session_state.uploaded_file_name
-                     reset_quiz() # Reset quiz state since we are leaving
+                     reset_quiz()
+                     st.session_state.page = "ranking" # Will be handled by the radio key sync
                      st.rerun()
 
     else:
-        st.info("문제가 발생했습니다. 홈으로 돌아가주세요.")
-        if st.button("홈으로 이동"):
-            st.session_state.page = "home"
+        st.info("문제가 발생했습니다. 다시 시작해주세요.")
+        if st.button("처음으로"):
+            reset_quiz()
             st.rerun()
 
 # --- Main Layout & Execution ---
 
-# Sidebar is common (Inputs)
+# Sidebar Navigation
 with st.sidebar:
-    # Render logo in sidebar ONLY if we are in quiz mode OR ranking mode
-    if st.session_state.page in ["quiz", "ranking"]:
-        render_logo(width="200px", fixed_transparent=True, clickable=True)
-        st.divider()
+    # Logo
+    render_logo(width="200px", fixed_transparent=True)
+    st.divider()
 
-    st.title("설정 및 파일 업로드")
+    # Menu items mapping
+    menu_items = {
+        "학습 시작하기": "home",
+        "명예의 전당": "ranking",
+        "오답노트": "wrong_answers"
+    }
 
-    # Inputs
-    user_name_input = st.text_input("행번", placeholder="예: 12345 홍길동")
-    uploaded_file_input = st.file_uploader("PDF 문서 업로드", type="pdf")
+    # Render Buttons
+    for label, page_key in menu_items.items():
+        # Determine button type (primary if active, secondary if not)
+        btn_type = "primary" if st.session_state.page == page_key else "secondary"
 
-    # Optional: Sidebar Generate Button (for quick access or if user prefers)
-    # Only show if in Quiz mode to allow restarting, OR if user wants to use sidebar to start.
-    # But to keep UX clean as requested (Home screen separation), we might keep it minimal.
-    # However, if user is in Quiz mode and wants to change file, they need a way to restart.
-    if st.session_state.page == "quiz":
-        st.divider()
-        if st.button("새 퀴즈 생성"):
-             if generate_quiz_logic(user_name_input, uploaded_file_input):
-                 # generate_quiz_logic resets quiz, so we just stay on quiz page (or reload it)
-                 st.rerun()
+        if st.button(label, key=f"nav_{page_key}", type=btn_type, use_container_width=True):
+            # Check if we need to reset the quiz
+            # Case 1: Switching to a different page
+            # Case 2: Clicking "Start Learning" while a quiz is active (Reset to Setup)
+            should_reset = st.session_state.quiz_active
+
+            if st.session_state.page != page_key or (page_key == 'home' and should_reset):
+                st.session_state.page = page_key
+                if should_reset:
+                    reset_quiz()
+                st.rerun()
 
 # Router
 if st.session_state.page == "home":
-    home_page(user_name_input, uploaded_file_input)
-elif st.session_state.page == "quiz":
-    quiz_page(user_name_input)
+    home_page()
 elif st.session_state.page == "ranking":
     ranking_page()
+elif st.session_state.page == "wrong_answers":
+    wrong_answers_page()

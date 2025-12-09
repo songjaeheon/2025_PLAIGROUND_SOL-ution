@@ -131,3 +131,54 @@ def save_mentoring_log(credentials_path, spreadsheet_id, employee_id, question_t
     except Exception as e:
         logger.error("Error saving mentoring log", exc_info=True)
         return False
+
+def get_wrong_answers(credentials_path, spreadsheet_id, employee_id):
+    """
+    Fetches wrong answer logs for a specific employee_id from 'log_wrong_answers'.
+    Returns a list of dictionaries with keys:
+    ['Timestamp', 'Doc_Name', 'Question_Text', 'Options', 'Correct_Answer', 'User_Selected_Answer']
+    """
+    logger.info(f"Fetching wrong answers for {employee_id}")
+    try:
+        gc = _get_gspread_client(credentials_path)
+        sh = gc.open_by_key(spreadsheet_id)
+
+        try:
+            worksheet = sh.worksheet('log_wrong_answers')
+        except gspread.exceptions.WorksheetNotFound:
+            logger.warning("Worksheet 'log_wrong_answers' not found.")
+            return []
+
+        data = worksheet.get_all_records()
+
+        results = []
+        for row in data:
+            # Check for exact match on Employee_ID (converting to string to be safe)
+            if str(row.get('Employee_ID', '')).strip() == str(employee_id).strip():
+                # Parse Question_Info JSON
+                q_info_str = row.get('Question_Info', '{}')
+                try:
+                    q_info = json.loads(q_info_str)
+                    question_text = q_info.get('question', 'Unknown Question')
+                    options = q_info.get('options', [])
+                except json.JSONDecodeError:
+                    question_text = "Error parsing question info"
+                    options = []
+
+                results.append({
+                    'Timestamp': row.get('Timestamp'),
+                    'Doc_Name': row.get('Doc_Name'),
+                    'Question_Text': question_text,
+                    'Options': options,
+                    'Correct_Answer': row.get('Correct_Answer'),
+                    'User_Selected_Answer': row.get('User_Selected_Answer')
+                })
+
+        # Sort by Timestamp descending (optional but good for UX)
+        results.sort(key=lambda x: x['Timestamp'], reverse=True)
+
+        return results
+
+    except Exception as e:
+        logger.error("Error fetching wrong answers", exc_info=True)
+        return []
