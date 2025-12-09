@@ -227,7 +227,7 @@ def home_page(user_name, uploaded_file):
         """
         <div style="text-align: center; margin-bottom: 50px;">
             <h1>SOL-ution</h1>
-            <h3>신입 엔지니어를 위한 AI 운영 멘토링 서비스</h3>
+            <h3>신입, 전입 직원을 위한 자기주도 학습 서비스</h3>
         </div>
         """,
         unsafe_allow_html=True
@@ -243,7 +243,12 @@ def home_page(user_name, uploaded_file):
 
 def quiz_page(user_name):
     # Quiz UI
-    st.title("SOL-ution 🎓")
+    # Header: File Name and User Name
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        st.title(st.session_state.uploaded_file_name if st.session_state.uploaded_file_name else "SOL-ution 🎓")
+    with col2:
+        st.markdown(f"<div style='text-align: right; padding-top: 20px; font-size: 1.2em; font-weight: bold; color: #0046FF;'>👤 {user_name}</div>", unsafe_allow_html=True)
 
     if st.session_state.quiz_data:
         q_index = st.session_state.current_q_index
