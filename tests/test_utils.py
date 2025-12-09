@@ -4,7 +4,7 @@ import json
 import os
 from utils.discord_sender import send_sos_message
 from utils.gemini_handler import GeminiHandler
-from utils.sheet_handler import log_quiz_result
+from utils.sheet_handler import save_score
 
 class TestUtils(unittest.TestCase):
 
@@ -85,10 +85,11 @@ class TestUtils(unittest.TestCase):
 
         mock_service_account.return_value = mock_gc
         mock_gc.open_by_key.return_value = mock_sh
-        mock_sh.sheet1 = mock_ws
+        # save_score looks for 'log_scores' worksheet
+        mock_sh.worksheet.return_value = mock_ws
 
         # Execute
-        result = log_quiz_result("fake_creds.json", "fake_id", "User", "File", 100, "Q1", "Why?")
+        result = save_score("fake_creds.json", "fake_id", "User", "File", 100)
 
         # Assert
         self.assertTrue(result)
@@ -96,7 +97,8 @@ class TestUtils(unittest.TestCase):
         args, _ = mock_ws.append_row.call_args
         row = args[0]
         self.assertEqual(row[1], "User")
-        self.assertEqual(row[5], "Why?")
+        # index 3 is Score (0=Time, 1=ID, 2=Doc, 3=Score)
+        self.assertEqual(row[3], 100)
 
 if __name__ == '__main__':
     unittest.main()

@@ -1,0 +1,13 @@
+
+Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
+
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8501
+  Network URL: http://192.168.0.2:8501
+  External URL: http://34.46.237.233:8501
+
+[2025-12-09 01:57:05,685] [INFO] [logger.py:setup_logger] Logger initialized successfully.
+[2025-12-09 01:57:13,184] [INFO] [app.py:generate_quiz_logic] Quiz generation triggered
+[2025-12-09 01:57:13,185] [WARNING] [app.py:generate_quiz_logic] User attempted to generate quiz without providing name/ID
