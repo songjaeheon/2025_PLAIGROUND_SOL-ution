@@ -58,6 +58,13 @@ st.markdown(
         display: none;
     }}
 
+    /* Light Mode Background */
+    @media (prefers-color-scheme: light) {{
+        .stApp {{
+            background-color: #fcfcfb;
+        }}
+    }}
+
     /* Dark Mode Override */
     @media (prefers-color-scheme: dark) {{
         .logo-light {{
