@@ -251,7 +251,7 @@ def home_page(user_name, uploaded_file):
     st.markdown(
         """
         <div style="text-align: center; margin-bottom: 50px;">
-            <h3>신입, 전입 직원을 위한 자기주도 학습 서비스</h3>
+            <h3>신입, 전입 직원을 위한 퀴즈형 자기주도 학습 서비스</h3>
         </div>
         """,
         unsafe_allow_html=True
