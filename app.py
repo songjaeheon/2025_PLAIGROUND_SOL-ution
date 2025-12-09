@@ -53,7 +53,7 @@ st.markdown(
     /* Logo Classes */
     .logo-container {{
         display: flex;
-        justify_content: center;
+        justify-content: center;
         margin-bottom: 20px;
     }}
     .logo-img {{
@@ -251,7 +251,6 @@ def home_page(user_name, uploaded_file):
     st.markdown(
         """
         <div style="text-align: center; margin-bottom: 50px;">
-            <h1>SOL-ution</h1>
             <h3>신입, 전입 직원을 위한 자기주도 학습 서비스</h3>
         </div>
         """,
