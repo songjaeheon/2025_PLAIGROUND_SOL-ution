@@ -124,13 +124,20 @@ def reset_quiz():
     st.session_state.score = 0
     st.session_state.answer_checked = False
 
-def render_logo(width="300px"):
-    html = f"""
-    <div class="logo-container">
-        <img src="data:image/png;base64,{img_light}" class="logo-img logo-light" style="width: {width};">
-        <img src="data:image/png;base64,{img_dark}" class="logo-img logo-dark" style="width: {width};">
-    </div>
-    """
+def render_logo(width="300px", fixed_transparent=False):
+    if fixed_transparent:
+        html = f"""
+        <div class="logo-container">
+            <img src="data:image/png;base64,{img_dark}" class="logo-img" style="width: {width};">
+        </div>
+        """
+    else:
+        html = f"""
+        <div class="logo-container">
+            <img src="data:image/png;base64,{img_light}" class="logo-img logo-light" style="width: {width};">
+            <img src="data:image/png;base64,{img_dark}" class="logo-img logo-dark" style="width: {width};">
+        </div>
+        """
     st.markdown(html, unsafe_allow_html=True)
 
 @st.dialog("선배에게 질문하기 (SOS)")
@@ -352,7 +359,7 @@ def quiz_page(user_name):
 with st.sidebar:
     # Render logo in sidebar ONLY if we are in quiz mode
     if st.session_state.page == "quiz":
-        render_logo(width="200px")
+        render_logo(width="200px", fixed_transparent=True)
         st.divider()
 
     st.title("설정 및 파일 업로드")
