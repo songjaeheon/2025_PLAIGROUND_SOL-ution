@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from utils.gemini_handler import GeminiHandler
 from utils.discord_sender import send_sos_message
-from utils.sheet_handler import log_quiz_result
+from utils.sheet_handler import save_score, save_wrong_answer, save_mentoring_log
 from utils.logger import logger
 
 # Load environment variables
@@ -119,13 +119,13 @@ def show_sos_dialog(question_data, user_selected_option):
                 )
 
                 # Log to Sheet
-                sheet_success = log_quiz_result(
+                sheet_success = save_mentoring_log(
                     GOOGLE_SHEET_CREDENTIALS,
                     SPREADSHEET_ID,
                     user_name,
-                    st.session_state.uploaded_file_name,
-                    st.session_state.score,
                     question_data['question'],
+                    question_data['answer'],
+                    user_selected_option,
                     user_question
                 )
 
@@ -157,10 +157,6 @@ if st.session_state.quiz_data:
         # Display options
         # Use session state to keep track of selection if we are in 'checked' state
 
-        # If we haven't checked the answer yet, allow selection
-        # If we have checked, we could disable, but keeping it enabled is fine as long as we show result based on recorded answer.
-        # But to be safe, let's keep the widget key.
-
         choice = st.radio(
             "보기:",
             q_data['options'],
@@ -179,6 +175,21 @@ if st.session_state.quiz_data:
                     # Calculate score immediately
                     if choice == q_data['answer']:
                         st.session_state.score += 20
+                    else:
+                        # WRONG ANSWER - Log immediately
+                        question_info = {
+                            "question": q_data['question'],
+                            "options": q_data['options']
+                        }
+                        save_wrong_answer(
+                            GOOGLE_SHEET_CREDENTIALS,
+                            SPREADSHEET_ID,
+                            user_name,
+                            st.session_state.uploaded_file_name,
+                            question_info,
+                            q_data['answer'],
+                            choice
+                        )
                     st.rerun()
         else:
             # Answer is checked, show result and next buttons
@@ -202,15 +213,13 @@ if st.session_state.quiz_data:
     else:
         st.success(f"모든 문제를 풀었습니다! 최종 점수: {st.session_state.score}점")
         if st.button("결과 저장 및 종료"):
-             # Final log without specific question
-             log_quiz_result(
+             # Final log of the score
+             save_score(
                 GOOGLE_SHEET_CREDENTIALS,
                 SPREADSHEET_ID,
                 user_name,
                 st.session_state.uploaded_file_name,
-                st.session_state.score,
-                "Quiz Completed",
-                "-"
+                st.session_state.score
             )
              st.success("기록되었습니다. 수고하셨습니다!")
 
