@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 import base64
+from PIL import Image
 from dotenv import load_dotenv
 
 from utils.gemini_handler import GeminiHandler
@@ -17,7 +18,17 @@ DISCORD_WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
 GOOGLE_SHEET_CREDENTIALS = os.getenv("GOOGLE_SHEET_CREDENTIALS")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
 
-st.set_page_config(page_title="SOL-ution: Learning Helper", page_icon="📝", layout="wide")
+# Favicon Setup
+favicon_path = "assets/Logo_SOL-ution_favicon.ico"
+page_icon = "📝" # Default fallback
+
+try:
+    if os.path.exists(favicon_path):
+        page_icon = Image.open(favicon_path)
+except Exception:
+    pass # Keep default
+
+st.set_page_config(page_title="SOL-ution: Learning Helper", page_icon=page_icon, layout="wide")
 
 # --- Asset Management ---
 def get_base64_of_bin_file(bin_file):
