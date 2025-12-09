@@ -1,15 +1,18 @@
 
 Collecting usage statistics. To deactivate, set browser.gatherUsageStats to false.
 
-
-  You can now view your Streamlit app in your browser.
-
-  Local URL: http://localhost:8501
-  Network URL: http://192.168.0.2:8501
-  External URL: http://34.46.237.233:8501
-
-[2025-12-09 13:38:47,420] [INFO] [logger.py:setup_logger] Logger initialized successfully.
-[2025-12-09 13:39:38,239] [ERROR] [ranking_handler.py:get_all_scores] Error fetching scores: stat: path should be string, bytes, os.PathLike or integer, not NoneType
+2025-12-09 14:10:05.523 Port 8501 is already in use
+[2025-12-09 14:10:42,508] [ERROR] [ranking_handler.py:get_all_scores] Error fetching scores: stat: path should be string, bytes, os.PathLike or integer, not NoneType
+Traceback (most recent call last):
+  File "/app/utils/ranking_handler.py", line 13, in get_all_scores
+    gc = _get_gspread_client(credentials_path)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/utils/sheet_handler.py", line 13, in _get_gspread_client
+    if os.path.exists(credentials_path):
+       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen genericpath>", line 19, in exists
+TypeError: stat: path should be string, bytes, os.PathLike or integer, not NoneType
+[2025-12-09 14:14:44,119] [ERROR] [ranking_handler.py:get_all_scores] Error fetching scores: stat: path should be string, bytes, os.PathLike or integer, not NoneType
 Traceback (most recent call last):
   File "/app/utils/ranking_handler.py", line 13, in get_all_scores
     gc = _get_gspread_client(credentials_path)

@@ -46,6 +46,34 @@ except FileNotFoundError:
     img_dark = ""
 
 # --- CSS Styling ---
+# Sidebar CSS
+sidebar_css = """
+    /* Sidebar Button Styling */
+    div[data-testid="stSidebarUserContent"] .stButton button {
+        width: 100%;
+        border-radius: 5px;
+        padding-top: 15px;
+        padding-bottom: 15px;
+        border: 1px solid transparent; /* Tab-like feel */
+        margin-bottom: 5px;
+        transition: all 0.3s ease;
+    }
+
+    /* Force Secondary Buttons to be transparent/white by default to fix Blue-everywhere issue */
+    div[data-testid="stSidebarUserContent"] .stButton button[kind="secondary"] {
+        background-color: transparent !important;
+        border: 1px solid transparent !important;
+        color: inherit !important;
+    }
+
+    /* Inactive Button Hover Effect */
+    div[data-testid="stSidebarUserContent"] .stButton button[kind="secondary"]:hover {
+        background-color: #f0f2f6 !important;
+        border: 1px solid #dcdcdc !important;
+        color: #0046FF !important;
+    }
+"""
+
 st.markdown(
     f"""
     <style>
@@ -85,14 +113,14 @@ st.markdown(
         }}
     }}
 
-    /* Brand Styling */
-    .stButton > button {{
+    /* Brand Styling for Primary Buttons (Main Content) */
+    .stButton > button[kind="primary"] {{
         background-color: #0046FF !important;
         color: white !important;
         border-radius: 8px;
         font-weight: bold;
     }}
-    .stButton > button:hover {{
+    .stButton > button[kind="primary"]:hover {{
         background-color: #0033CC !important;
         color: white !important;
     }}
@@ -101,6 +129,9 @@ st.markdown(
     h1, h2, h3 {{
         color: #0046FF;
     }}
+
+    /* Sidebar Custom CSS */
+    {sidebar_css}
     </style>
     """,
     unsafe_allow_html=True
@@ -530,42 +561,29 @@ with st.sidebar:
     render_logo(width="200px", fixed_transparent=True)
     st.divider()
 
-    # Map menu items to internal page IDs
-    menu_map = {
-        "🏠 학습 시작하기": "home",
-        "🏆 명예의 전당": "ranking",
-        "📝 오답노트": "wrong_answers"
+    # Menu items mapping
+    menu_items = {
+        "학습 시작하기": "home",
+        "명예의 전당": "ranking",
+        "오답노트": "wrong_answers"
     }
 
-    # Reverse map for default index
-    reverse_map = {v: k for k, v in menu_map.items()}
+    # Render Buttons
+    for label, page_key in menu_items.items():
+        # Determine button type (primary if active, secondary if not)
+        btn_type = "primary" if st.session_state.page == page_key else "secondary"
 
-    # Check current page state to set default
-    if st.session_state.page not in reverse_map:
-        st.session_state.page = "home"
+        if st.button(label, key=f"nav_{page_key}", type=btn_type, use_container_width=True):
+            # Check if we need to reset the quiz
+            # Case 1: Switching to a different page
+            # Case 2: Clicking "Start Learning" while a quiz is active (Reset to Setup)
+            should_reset = st.session_state.quiz_active
 
-    current_label = reverse_map[st.session_state.page]
-
-    selected_menu = st.radio(
-        "메뉴",
-        list(menu_map.keys()),
-        index=list(menu_map.keys()).index(current_label),
-        label_visibility="collapsed"
-    )
-
-    # State Management Logic
-    new_page = menu_map[selected_menu]
-
-    if new_page != st.session_state.page:
-        # Navigation changed
-        st.session_state.page = new_page
-        # Reset quiz active state if moving away from home
-        # Or even if moving to home (reset to setup)
-        # Requirement: "Navigating away resets to setup"
-        # If we are effectively reloading, we can just reset quiz_active.
-        if st.session_state.quiz_active:
-            reset_quiz()
-        st.rerun()
+            if st.session_state.page != page_key or (page_key == 'home' and should_reset):
+                st.session_state.page = page_key
+                if should_reset:
+                    reset_quiz()
+                st.rerun()
 
 # Router
 if st.session_state.page == "home":
