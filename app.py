@@ -327,7 +327,7 @@ def home_page():
                                     value=st.session_state.user_name if st.session_state.user_name else "",
                                     placeholder="예: 12345 홍길동")
 
-    uploaded_file_input = st.file_uploader("학습할 PDF 문서를 업로드하세요", type="pdf")
+    uploaded_file_input = st.file_uploader("학습할 PDF 문서를 업로드하세요. (10MB 제한)", type="pdf")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
