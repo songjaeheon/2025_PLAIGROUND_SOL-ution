@@ -396,8 +396,7 @@ def wrong_answers_page():
     col1, col2 = st.columns([3, 1])
     with col1:
         # Prefill if available in session state
-        search_id = st.text_input("조회할 행번을 입력하세요:",
-                                  value=st.session_state.user_name if st.session_state.user_name else "")
+        search_id = st.text_input("조회할 행번을 입력하세요:")
     with col2:
         # Align button with input
         st.write("")
