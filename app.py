@@ -325,7 +325,7 @@ def home_page():
     # Inputs moved from Sidebar to Main Content
     user_name_input = st.text_input("행번을 입력하세요",
                                     value=st.session_state.user_name if st.session_state.user_name else "",
-                                    placeholder="예: 12345 홍길동")
+                                    placeholder="예: 24101234")
 
     uploaded_file_input = st.file_uploader("학습할 PDF 문서를 업로드하세요. (10MB 제한)", type="pdf")
 
